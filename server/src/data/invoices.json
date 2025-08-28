@@ -1,0 +1,44 @@
+[
+  {
+    "id": "2175905535614",
+    "passengerId": "2175905535614",
+    "fileName": "2175905535614.pdf",
+    "filePath": "C:\\Users\\user\\Desktop\\Projects\\Finkraft Hackathon\\server\\src\\invoices\\2175905535614.pdf",
+    "downloadStatus": "success",
+    "parseStatus": "success",
+    "downloadedAt": "2025-08-28T08:34:51.062Z",
+    "error": "dataDir is not defined",
+    "parsedAt": "2025-08-28T08:38:54.090Z",
+    "invoiceId": "2175905535614",
+    "invoiceNumber": "N/A",
+    "date": "N/A",
+    "airline": "Unknown",
+    "amount": 0,
+    "gstin": "N/A"
+  },
+  {
+    "id": "2172860898782",
+    "passengerId": "2172860898782",
+    "fileName": "2172860898782.pdf",
+    "filePath": "C:\\Users\\user\\Desktop\\Projects\\Finkraft Hackathon\\server\\src\\invoices\\2172860898782.pdf",
+    "downloadStatus": "success",
+    "parseStatus": "success",
+    "downloadedAt": "2025-08-28T08:40:02.162Z",
+    "invoiceId": "2172860898782",
+    "invoiceNumber": "N/A",
+    "date": "N/A",
+    "airline": "Unknown",
+    "amount": 0,
+    "gstin": "N/A",
+    "parsedAt": "2025-08-28T08:40:09.994Z"
+  },
+  {
+    "id": "2175904917328",
+    "passengerId": "2175904917328",
+    "fileName": "2175904917328.pdf",
+    "filePath": "C:\\Users\\user\\Desktop\\Projects\\Finkraft Hackathon\\server\\src\\invoices\\2175904917328.pdf",
+    "downloadStatus": "success",
+    "parseStatus": "pending",
+    "downloadedAt": "2025-08-28T09:05:56.149Z"
+  }
+]
