@@ -1,178 +1,156 @@
-const fs = require('fs').promises;
-const path = require('path');
-const pdfParse = require('pdf-parse');
-const { ensureDirectoryExists, saveInvoices } = require('../utils/storage');
-const passengerController = require('./passengerController');
+const puppeteer = require("puppeteer");
+const path = require("path");
+const fs = require("fs");
 
-const invoicesDir = path.join(__dirname, '../invoices');
-const dataDir = path.join(__dirname, "../data");
+const parseInvoice = require('../utils/parseInvoice')
 
-async function downloadInvoice(req, res) {
-  const passengerId = req.params.passengerId;
-  const passengers = passengerController.getPassengersData();
-  const passenger = passengers.find(p => p.ticketNumber === passengerId);
+const invoicesDir = path.join(process.cwd(), "src/invoices");
+const passengersFile = path.join(process.cwd(), "src/data/passengers.json");
 
-  if (!passenger) {
-    return res.status(404).json({ error: "Passenger not found" });
-  }
+// Ensure invoices directory exists
+if (!fs.existsSync(invoicesDir)) {
+    fs.mkdirSync(invoicesDir);
+}
 
-  try {
-    await ensureDirectoryExists(invoicesDir);
+// Helper to read & write passengers.json
+function readPassengers() {
+    return JSON.parse(fs.readFileSync(passengersFile, "utf-8"));
+}
+function writePassengers(data) {
+    fs.writeFileSync(passengersFile, JSON.stringify(data, null, 4));
+}
 
-    // Invoice file expected format: passenger.ticketNumber.pdf
-    const fileName = `${passenger.ticketNumber}.pdf`;
-    const filePath = path.join(invoicesDir, fileName);
-
-    // Check if file exists
+const DownloadInvoiceController = async (req, res) => {
+    let browser;
     try {
-      await fs.access(filePath);
-    } catch (err) {
-      return res.status(404).json({ error: "Invoice PDF not found for this passenger" });
+        const { ticketNumber, firstName, lastName } = req.body;
+
+        if (!ticketNumber || !firstName || !lastName) {
+            return res.status(400).json({ success: false, message: "Missing required fields" });
+        }
+
+        browser = await puppeteer.launch({
+            headless: true,
+            args: ["--no-sandbox", "--disable-setuid-sandbox"]
+        });
+
+        const page = await browser.newPage();
+
+        // Configure download folder
+        await page._client().send("Page.setDownloadBehavior", {
+            behavior: "allow",
+            downloadPath: invoicesDir,
+        });
+
+        await page.goto(
+            "https://thaiair.thaiairways.com/ETAXPrint/pages/passengerPages/passengerHomePage.jsp",
+            { waitUntil: "networkidle2" }
+        );
+
+        await page.type("#ticketNo", ticketNumber);
+        await page.type("#firstName", firstName);
+        await page.type("#lastName", lastName);
+
+        // Submit search
+        await page.evaluate(() => {
+            document.querySelector("button[onclick='search()']").click();
+        });
+
+        await page.waitForSelector(".ticketCheckbox", { timeout: 15000 });
+        await page.evaluate(() => {
+            const checkbox = document.querySelector(".ticketCheckbox");
+            if (checkbox && !checkbox.checked) checkbox.click();
+        });
+
+        await page.waitForSelector("button[onclick='viewTicketDetails()']", { timeout: 15000 });
+        await Promise.all([
+            page.waitForNavigation({ waitUntil: "networkidle2", timeout: 60000 }),
+            page.evaluate(() => {
+                document.querySelector("button[onclick='viewTicketDetails()']").click();
+            }),
+        ]);
+
+        // Click download
+        await page.waitForSelector("#download_button", { timeout: 30000 });
+        await page.click("#download_button");
+
+        // Wait for the file to appear (max 30 seconds)
+        const defaultFile = path.join(invoicesDir, "print_cash_tax.pdf");
+        const renamedFile = path.join(invoicesDir, `${ticketNumber}.pdf`);
+
+        let retries = 0;
+        while (!fs.existsSync(defaultFile) && retries < 30) {
+            await new Promise(r => setTimeout(r, 1000)); // wait 1 sec
+            retries++;
+        }
+
+        if (!fs.existsSync(defaultFile)) {
+            return res.status(500).json({ success: false, message: "PDF download failed" });
+        }
+
+        fs.renameSync(defaultFile, renamedFile);
+
+        // Update passengers.json
+        const passengers = readPassengers().map(p => {
+            if (p.ticketNumber === ticketNumber) {
+                p.downloadStatus = "Completed";
+                p.invoicePath = renamedFile;
+            }
+            return p;
+        });
+        writePassengers(passengers);
+
+        const updatedPassenger = passengers.find(p => p.ticketNumber === ticketNumber);
+
+        return res.status(200).json({
+            success: true,
+            message: "Invoice downloaded successfully",
+            passenger: updatedPassenger
+        });
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ success: false, message: error.message });
+    } finally {
+        if (browser) await browser.close();
     }
-
-    // Create invoice record
-    let invoices = passengerController.getInvoices();
-    const invoice = {
-      id: passenger.ticketNumber, // Use ticketNumber as invoice ID
-      passengerId: passenger.ticketNumber,
-      fileName: fileName,
-      filePath: filePath,
-      downloadStatus: "success",
-      parseStatus: "pending",
-      downloadedAt: new Date().toISOString()
-    };
-
-    // Update or insert record
-    const existingIndex = invoices.findIndex(inv => inv.passengerId === passengerId);
-    if (existingIndex !== -1) {
-      invoices[existingIndex] = invoice;
-    } else {
-      invoices.push(invoice);
-    }
-
-    await saveInvoices(invoices);
-    passengerController.updateInvoices(invoices);
-
-    res.json(invoice);
-  } catch (error) {
-    console.error("Error downloading invoice:", error);
-
-    let invoices = passengerController.getInvoices();
-    const invoice = {
-      id: `FAILED-${Date.now()}`,
-      passengerId: passenger.ticketNumber,
-      downloadStatus: "error",
-      error: error.message,
-      downloadedAt: new Date().toISOString()
-    };
-
-    const existingIndex = invoices.findIndex(inv => inv.passengerId === passengerId);
-    if (existingIndex !== -1) {
-      invoices[existingIndex] = invoice;
-    } else {
-      invoices.push(invoice);
-    }
-
-    await saveInvoices(invoices);
-    passengerController.updateInvoices(invoices);
-
-    res.status(500).json({ error: "Failed to fetch invoice" });
-  }
-}
-
-
-async function parseInvoice(req, res) {
-  const invoiceId = req.params.invoiceId;
-  let invoices = passengerController.getInvoices();
-  const invoiceIndex = invoices.findIndex(inv => inv.id === invoiceId);
-
-  if (invoiceIndex === -1) {
-    return res.status(404).json({ error: "Invoice not found" });
-  }
-
-  const invoice = invoices[invoiceIndex];
-
-  if (invoice.downloadStatus !== "success") {
-    return res
-      .status(400)
-      .json({ error: "Invoice not downloaded successfully" });
-  }
-
-  try {
-    await ensureDirectoryExists(dataDir);
-
-    const filePath = path.join(invoicesDir, invoice.fileName);
-    const dataBuffer = await fs.readFile(filePath);
-    const data = await pdfParse(dataBuffer);
-
-    const text = data.text;
-
-    // Extract data using regex patterns
-    const invoiceNumberMatch = text.match(/Invoice Number[:]?\s*([A-Z0-9-]+)/i);
-    const dateMatch = text.match(/Date[:]?\s*(\d{2}\/\d{2}\/\d{4})/i);
-    const airlineMatch = text.match(/Airline[:]?\s*([A-Za-z\s]+)/i);
-    const amountMatch = text.match(/Total Amount[:]?\s*\$?(\d+(?:\.\d{2})?)/i);
-    const gstinMatch = text.match(/GSTIN[:]?\s*([A-Z0-9]+)/i);
-
-    // Parsed data object
-    const parsedData = {
-      invoiceId: invoice.id,
-      passengerId: invoice.passengerId,
-      invoiceNumber: invoiceNumberMatch ? invoiceNumberMatch[1] : "N/A",
-      date: dateMatch ? dateMatch[1] : "N/A",
-      airline: airlineMatch ? airlineMatch[1].trim() : "Unknown",
-      amount: amountMatch ? parseFloat(amountMatch[1]) : 0,
-      gstin: gstinMatch ? gstinMatch[1] : "N/A",
-      parseStatus: "success",
-      parsedAt: new Date().toISOString()
-    };
-
-    // Update invoices.json (main metadata file)
-    invoices[invoiceIndex] = { ...invoice, ...parsedData };
-    await saveInvoices(invoices);
-    passengerController.updateInvoices(invoices);
-
-    // Save parsed data into ../data folder
-    const parsedFilePath = path.join(dataDir, `parsed-${invoice.id}.json`);
-    await fs.writeFile(parsedFilePath, JSON.stringify(parsedData, null, 2));
-
-    res.json(parsedData);
-  } catch (error) {
-    console.error("Error parsing invoice:", error);
-
-    invoices[invoiceIndex] = {
-      ...invoice,
-      parseStatus: "error",
-      error: error.message,
-      parsedAt: new Date().toISOString()
-    };
-
-    await saveInvoices(invoices);
-    passengerController.updateInvoices(invoices);
-
-    res.status(500).json({ error: "Failed to parse invoice" });
-  }
-}
-
-
-function getInvoices(req, res) {
-  const invoices = passengerController.getInvoices();
-  res.json(invoices.filter(invoice => invoice.parseStatus === 'success'));
-}
-
-function getHighValueInvoices(req, res) {
-  const threshold = req.query.threshold || 10000;
-  const invoices = passengerController.getInvoices();
-  const highValueInvoices = invoices.filter(invoice =>
-    invoice.parseStatus === 'success' && invoice.amount > threshold
-  );
-
-  res.json(highValueInvoices);
-}
-
-module.exports = {
-  downloadInvoice,
-  parseInvoice,
-  getInvoices,
-  getHighValueInvoices
 };
+
+const ParseInvoiceController = async (req, res) => {
+    try {
+        const { ticketNumber } = req.body;
+
+        const invoicePath = path.join(invoicesDir, `${ticketNumber}.pdf`);
+
+        if (!fs.existsSync(invoicePath)) {
+            return res.status(404).json({ success: false, message: "Invoice file not found" });
+        }
+
+        const parsedData = await parseInvoice(invoicePath, ticketNumber);
+
+        // Update passengers.json
+        const passengers = readPassengers().map(p => {
+            if (p.ticketNumber === ticketNumber) {
+                p.parseStatus = "Completed";
+                p.parsedData = parsedData;
+            }
+            return p;
+        });
+        writePassengers(passengers);
+
+        const updatedPassenger = passengers.find(p => p.ticketNumber === ticketNumber);
+
+        res.status(200).json({
+            success: true,
+            message: "Invoice parsed successfully",
+            parsedData,
+            passenger: updatedPassenger
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+module.exports = { DownloadInvoiceController, ParseInvoiceController };

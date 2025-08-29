@@ -1,72 +1,95 @@
 [
-  {
-    "ticketNumber": "2172860898782",
-    "firstName": "Ashar",
-    "lastName": "Ahmed",
-    "pnr": "PNR2FYWF",
-    "flightNumber": "FL662"
-  },
-  {
-    "ticketNumber": "2173425250895",
-    "firstName": "PRASOON",
-    "lastName": "YADAV",
-    "pnr": "PNRIAIES",
-    "flightNumber": "FL564"
-  },
-  {
-    "ticketNumber": "2173420960092",
-    "firstName": "VICTOR",
-    "lastName": "WAGNER",
-    "pnr": "PNRODQRO",
-    "flightNumber": "FL642"
-  },
-  {
-    "ticketNumber": "",
-    "firstName": "",
-    "lastName": "",
-    "pnr": "PNRAW73D",
-    "flightNumber": "FL767"
-  },
-  {
-    "ticketNumber": "2173420770687",
-    "firstName": "NAYAN",
-    "lastName": "KHANNA",
-    "pnr": "PNRCCXP4",
-    "flightNumber": "FL558"
-  },
-  {
-    "ticketNumber": "2175905535614",
-    "firstName": "KAUSHIK",
-    "lastName": "BANERJEE",
-    "pnr": "PNRJ56U5",
-    "flightNumber": "FL213"
-  },
-  {
-    "ticketNumber": "2175904917328",
-    "firstName": "MANJUNATHASWAMY",
-    "lastName": "DINNIMATH",
-    "pnr": "PNRU3871",
-    "flightNumber": "FL573"
-  },
-  {
-    "ticketNumber": "2175413770504",
-    "firstName": "SOUMYA",
-    "lastName": "PARVATIYAR",
-    "pnr": "PNRY64HZ",
-    "flightNumber": "FL309"
-  },
-  {
-    "ticketNumber": "2173079287333",
-    "firstName": "RAGHAV",
-    "lastName": "SALLY",
-    "pnr": "PNRXT8KP",
-    "flightNumber": "FL1046"
-  },
-  {
-    "ticketNumber": "2173078482499",
-    "firstName": "VIKAS",
-    "lastName": "SAINI",
-    "pnr": "PNRBPKYP",
-    "flightNumber": "FL992"
-  }
+    {
+        "ticketNumber": "2172860898782",
+        "firstName": "Ashar",
+        "lastName": "Ahmed",
+        "downloadStatus": "Completed",
+        "parseStatus": "Completed",
+        "invoicePath": "C:\\Users\\user\\Desktop\\Projects\\Finkraft Hackathon\\server\\src\\invoices\\2172860898782.pdf",
+        "parsedData": {
+            "invoiceNo": "",
+            "date": "20/02/2025",
+            "airline": "THAI AIRWAYS INTERNATIONAL PUBLIC COMPANY LIMITED",
+            "amount": "24,210.00",
+            "gstin": "07AAAJT0025A1ZT"
+        }
+    },
+    {
+        "ticketNumber": "2173425250895",
+        "firstName": "PRASOON",
+        "lastName": "YADAV",
+        "downloadStatus": "Completed",
+        "parseStatus": "Completed",
+        "invoicePath": "C:\\Users\\user\\Desktop\\Projects\\Finkraft Hackathon\\server\\src\\invoices\\2173425250895.pdf",
+        "parsedData": {
+            "invoiceNo": "",
+            "date": "03/01/2025",
+            "airline": "THAI AIRWAYS INTERNATIONAL PUBLIC COMPANY LIMITED",
+            "amount": "25,850.00",
+            "gstin": "07AAAJT0025A1ZT"
+        }
+    },
+    {
+        "ticketNumber": "2173420960092",
+        "firstName": "VICTOR",
+        "lastName": "WAGNER",
+        "downloadStatus": "Completed",
+        "parseStatus": "Pending",
+        "invoicePath": "C:\\Users\\user\\Desktop\\Projects\\Finkraft Hackathon\\server\\src\\invoices\\2173420960092.pdf",
+        "parsedData": null
+    },
+    {
+        "ticketNumber": "2173420770687",
+        "firstName": "NAYAN",
+        "lastName": "KHANNA",
+        "downloadStatus": "Pending",
+        "parseStatus": "Pending",
+        "invoicePath": null,
+        "parsedData": null
+    },
+    {
+        "ticketNumber": "2175905535614",
+        "firstName": "KAUSHIK",
+        "lastName": "BANERJEE",
+        "downloadStatus": "Pending",
+        "parseStatus": "Pending",
+        "invoicePath": null,
+        "parsedData": null
+    },
+    {
+        "ticketNumber": "2175904917328",
+        "firstName": "MANJUNATHASWAMY",
+        "lastName": "DINNIMATH",
+        "downloadStatus": "Pending",
+        "parseStatus": "Pending",
+        "invoicePath": null,
+        "parsedData": null
+    },
+    {
+        "ticketNumber": "2175413770504",
+        "firstName": "SOUMYA",
+        "lastName": "PARVATIYAR",
+        "downloadStatus": "Pending",
+        "parseStatus": "Pending",
+        "invoicePath": null,
+        "parsedData": null
+    },
+    {
+        "ticketNumber": "2173079287333",
+        "firstName": "RAGHAV",
+        "lastName": "SALLY",
+        "downloadStatus": "Pending",
+        "parseStatus": "Pending",
+        "invoicePath": null,
+        "parsedData": null
+    },
+    {
+        "ticketNumber": "2173078482499",
+        "firstName": "VIKAS",
+        "lastName": "SAINI",
+        "downloadStatus": "Pending",
+        "parseStatus": "Pending",
+        "invoicePath": null,
+        "parsedData": null
+    }
 ]

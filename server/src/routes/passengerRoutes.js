@@ -1,11 +1,8 @@
 const express = require('express');
-const passengerController = require('../controllers/passengerController');
-
 const router = express.Router();
+const { GetPassengersController } = require('../controllers/passengerController')
 
-// Initialize data when routes are loaded
-passengerController.initializeData();
+router.get('/get-passengers', GetPassengersController);
 
-router.get('/', passengerController.getPassengers);
 
 module.exports = router;

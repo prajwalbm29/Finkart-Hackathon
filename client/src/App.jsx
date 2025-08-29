@@ -1,88 +1,137 @@
-import React, { useState } from 'react';
-import SummarySection from './components/SummarySection';
-import PassengerTable from './components/PassengerTable';
-import InvoiceTable from './components/InvoiceTable';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import 'react-toastify/dist/ReactToastify.css';
+import { ToastContainer, toast } from 'react-toastify';
+
+import DisplayPassengers from './components/DisplayPassengers';
 import LoadingSpinner from './components/LoadingSpinner';
-import useApiData from './hooks/useApiData';
+import DisplayParsedData from './components/DisplayParsedData';
+import AirlineTotalAmount from './components/AirlineTotalAmount';
 
-function App() {
-  const [selectedPassengers, setSelectedPassengers] = useState({});
+const App = () => {
+  const [passengers, setPassengers] = useState([]);
+  const [loadingIndex, setLoadingIndex] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const { data: passengers, loading: passengersLoading, error: passengersError } = useApiData('passengers');
-  const { data: invoices, loading: invoicesLoading, error: invoicesError } = useApiData('invoices');
-  const { data: summary, loading: summaryLoading, error: summaryError } = useApiData('summary');
+  useEffect(() => {
+    axios.defaults.baseURL = 'http://localhost:7001';
+  }, []);
 
-  const loading = passengersLoading || invoicesLoading || summaryLoading;
+  useEffect(() => {
+    const fetchPassengers = async () => {
+      try {
+        const { data } = await axios.get('/api/passengers/get-passengers');
+        if (data?.success) setPassengers(data?.data);
+      } catch (error) {
+        console.error(error);
+        toast.error(error?.response?.data?.message || "Failed to fetch passengers");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchPassengers();
+  }, []);
 
-  const downloadInvoice = async (passengerId) => {
+
+  const downloadInvoice = async (index) => {
+    setLoadingIndex(index);
+
+    const passenger = passengers[index];
+
+    // Optimistic UI
+    const updatedPassengers = [...passengers];
+    updatedPassengers[index] = { ...passenger, downloadStatus: 'In Progress' };
+    setPassengers(updatedPassengers);
+
+    const toastId = toast.loading(`Downloading invoice for ${passenger.firstName}...`);
+
     try {
-      const response = await fetch(`http://localhost:7001/api/invoices/download/${passengerId}`, {
-        method: 'POST'
+      const { data } = await axios.post('/api/invoices/download', {
+        ticketNumber: passenger.ticketNumber,
+        firstName: passenger.firstName,
+        lastName: passenger.lastName
       });
 
-      if (!response.ok) {
-        throw new Error('Download failed');
+      if (data?.success) {
+        toast.update(toastId, { render: data.message, type: "success", isLoading: false, autoClose: 3000 });
+        updatedPassengers[index] = data.passenger;
+        setPassengers(updatedPassengers);
       }
-
-      // Refetch passengers to update status
-      // In a real app, you might want to update local state instead
-      window.location.reload();
     } catch (error) {
-      console.error('Error downloading invoice:', error);
+      console.error('Download failed:', error);
+      toast.update(toastId, { render: error?.response?.data?.message || "Download failed", type: "error", isLoading: false, autoClose: 3000 });
+      updatedPassengers[index] = { ...passenger, downloadStatus: 'Failed' };
+      setPassengers(updatedPassengers);
+    } finally {
+      setLoadingIndex(null);
     }
   };
 
-  const parseInvoice = async (invoiceId, passengerId) => {
+  const parseInvoice = async (index) => {
+    setLoadingIndex(index);
+
+    const passenger = passengers[index];
+
+    // Optimistic UI
+    const updatedPassengers = [...passengers];
+    updatedPassengers[index] = { ...passenger, parseStatus: 'In Progress' };
+    setPassengers(updatedPassengers);
+
+    const toastId = toast.loading(`Parsing invoice for ${passenger.firstName}...`);
+
     try {
-      const response = await fetch(`http://localhost:7001/api/invoices/parse/${invoiceId}`, {
-        method: 'POST'
+      const { data } = await axios.post('/api/invoices/parse', {
+        ticketNumber: passenger.ticketNumber
       });
 
-      if (!response.ok) {
-        throw new Error('Parsing failed');
-      }
 
-      // Refetch data to update status
-      window.location.reload();
+      if (data?.success) {
+        toast.update(toastId, { render: "Invoice parsed successfully", type: "success", isLoading: false, autoClose: 3000 });
+        setPassengers(prev => prev.map((p, idx) => idx == index ? data?.passenger : p));
+      }
     } catch (error) {
-      console.error('Error parsing invoice:', error);
+      console.error('Parse failed:', error);
+      toast.update(toastId, { render: "Parse failed", type: "error", isLoading: false, autoClose: 3000 });
+      updatedPassengers[index] = { ...passenger, parseStatus: 'Failed' };
+      setPassengers(updatedPassengers);
+    } finally {
+      setLoadingIndex(null);
     }
   };
 
-  const toggleSelectPassenger = (passengerId) => {
-    setSelectedPassengers(prev => ({
-      ...prev,
-      [passengerId]: !prev[passengerId]
-    }));
-  };
-
-  if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <LoadingSpinner />
-      </div>
-    );
-  }
+  if (isLoading) return <LoadingSpinner />;
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Airline Invoice Management</h1>
-      </header>
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
+          Passenger Invoice Management
+        </h1>
 
-      <div className="dashboard">
-        <SummarySection summary={summary} />
-        <PassengerTable
+        <DisplayPassengers
           passengers={passengers}
-          selectedPassengers={selectedPassengers}
-          onToggleSelect={toggleSelectPassenger}
-          onDownloadInvoice={downloadInvoice}
-          onParseInvoice={parseInvoice}
+          onDownload={downloadInvoice}
+          onParse={parseInvoice}
+          loadingIndex={loadingIndex}
         />
-        <InvoiceTable invoices={invoices} />
+
+        <DisplayParsedData passengers={passengers} />
+
+        <AirlineTotalAmount />
       </div>
+
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        pauseOnHover
+        draggable
+        theme="colored"
+      />
     </div>
   );
-}
+};
 
 export default App;

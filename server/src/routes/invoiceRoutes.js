@@ -1,11 +1,8 @@
 const express = require('express');
-const invoiceController = require('../controllers/invoiceController');
-
+const { DownloadInvoiceController, ParseInvoiceController } = require('../controllers/invoiceController');
 const router = express.Router();
 
-router.get('/', invoiceController.getInvoices);
-router.get('/high-value', invoiceController.getHighValueInvoices);
-router.post('/download/:passengerId', invoiceController.downloadInvoice);
-router.post('/parse/:invoiceId', invoiceController.parseInvoice);
+router.post('/download', DownloadInvoiceController)
+router.post('/parse', ParseInvoiceController)
 
 module.exports = router;

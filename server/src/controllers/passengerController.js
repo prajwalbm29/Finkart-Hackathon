@@ -1,38 +1,14 @@
-const { loadPassengers } = require('../utils/csvParser');
-const { loadInvoices } = require('../utils/storage');
+const passengerData = require('../data/passengers.json')
 
-let passengers = [];
-let invoices = [];
-
-// Initialize data
-async function initializeData() {
-  try {
-    passengers = await loadPassengers();
-    invoices = await loadInvoices();
-    console.log(`Loaded ${passengers.length} passengers and ${invoices.length} invoices`);
-  } catch (error) {
-    console.error('Error initializing data:', error);
-  }
-}
-
-function getPassengers(req, res) {
-  const passengerData = passengers.map(passenger => {
-    const invoice = invoices.find(inv => inv.passengerId === passenger.ticketNumber);
-    return {
-      ...passenger,
-      downloadStatus: invoice ? invoice.downloadStatus : 'pending',
-      parseStatus: invoice ? invoice.parseStatus : 'pending',
-      invoiceId: invoice ? invoice.id : null
-    };
-  });
-  
-  res.json(passengerData);
+const GetPassengersController = async (req, res) => {
+    try {
+        return res.status(200).json({ success: true, message: 'Passengers data fetched successfully', data: passengerData })
+    } catch (error) {
+        console.error(error)
+        return res.status(500).json({ success: false, message: error.message })
+    }
 }
 
 module.exports = {
-  initializeData,
-  getPassengers,
-  getPassengersData: () => passengers,
-  getInvoices: () => invoices,
-  updateInvoices: (newInvoices) => { invoices = newInvoices; }
-};
+    GetPassengersController
+}

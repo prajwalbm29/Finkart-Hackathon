@@ -1,8 +1,7 @@
 const express = require('express');
-const summaryController = require('../controllers/summaryController');
-
+const { AirlineWiseAmountController } = require('../controllers/summaryController');
 const router = express.Router();
 
-router.get('/', summaryController.getSummary);
+router.get('/airline-amount', AirlineWiseAmountController)
 
 module.exports = router;
